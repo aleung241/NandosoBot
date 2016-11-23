@@ -45,6 +45,7 @@ namespace NandosoBot
 					if (userName == "")
 					{
 						userData.SetProperty<string>("userName", message);
+						await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
 						botReply = $"Hi {userData.GetProperty<string>("userName")}, what would you like to do today?";
 					}
 					// If username had been given beforehand already
@@ -62,6 +63,7 @@ namespace NandosoBot
 								{
 									botReply = "What country do you want to deliver to?";
 									userData.SetProperty("askedForCountry", true);
+									await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
 								}
 							}
 							else if (userData.GetProperty<bool>("complaint"))
@@ -77,6 +79,7 @@ namespace NandosoBot
 								botReply = "I'm sorry that you are not satisfied with us. How may I help?";
 								userData.SetProperty<bool>("gotActivity", true);
 								userData.SetProperty<bool>("complaint", true);
+								await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
 							}
 							// If customer is making an order, ask if international or domestic order
 							else if (message.ToLower().Contains("order"))
@@ -85,6 +88,7 @@ namespace NandosoBot
 									"Our restaurant is based in Ulaanbaatar, Mongolia. Are you making a domestic order or an international order?";
 								userData.SetProperty<bool>("gotActivity", true);
 								userData.SetProperty<bool>("askedForDelivery", true);
+								await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
 							}
 						}
 					}
@@ -94,6 +98,7 @@ namespace NandosoBot
 				{
 					botReply = "Hello, what is your name?";
 					userData.SetProperty("askedForUserName", true);
+					await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
 				}
 
 
@@ -108,22 +113,38 @@ namespace NandosoBot
 					}
 					else if (message.ToLower().Contains("help"))
 					{
-						botReply = "Well...I should be giving you information about how to use this bot, but the creator has been lazy and hasn't implemented this yet :(";
+						botReply = "!reset to clear user data and reset the bot\n\r!menu to show the restaurant menu";
 					}
 					else if (message.ToLower().Contains("menu"))
 					{
+						Activity cardReply = activity.CreateReply("Here is our menu");
+						cardReply.Recipient = activity.From;
+						cardReply.Type = "message";
+						cardReply.Attachments = new List<Attachment>();
+						cardReply.AttachmentLayout = "carousel";
 						List<Menu> menu = await AzureManager.AzureManagerInstance.GetMenu();
 						foreach (Menu m in menu)
 						{
-							botReply += $"{m.Dish}: ${m.Price} NZD\n\r";
+							ThumbnailCard menuCard = new ThumbnailCard()
+							{
+								Title = m.Dish,
+								Subtitle = $"{m.Description}\n\r${m.Price} NZD",
+								Images = new List<CardImage>
+								{
+									new CardImage(url: m.Image)
+								}
+							};
+							Attachment attachment = menuCard.ToAttachment();
+							cardReply.Attachments.Add(attachment);
 						}
+						await connector.Conversations.SendToConversationAsync(cardReply);
+						return Request.CreateResponse(HttpStatusCode.OK);
 					}
 				}
 
 
 
 
-				await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
 
 				// return our reply to the user
 				Activity reply = activity.CreateReply(botReply);
