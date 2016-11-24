@@ -108,7 +108,7 @@ namespace NandosoBot
 								double convertedPrice = totalPrice / userData.GetProperty<double>("mnt") * userData.GetProperty<double>("rate");
 								receiptCard.Title = "Your Order";
 								receiptCard.Items = items;
-								receiptCard.Total = $"${totalPrice} MNT = ${convertedPrice} {userData.GetProperty<string>("currency")}";
+								receiptCard.Total = $"${convertedPrice} {userData.GetProperty<string>("currency")}";
 								receiptCard.Buttons = new List<CardAction>
 								{
 									new CardAction()
@@ -168,6 +168,7 @@ namespace NandosoBot
 						{
 							await CartManager.CartManagerInstance.DeleteCart(c);
 						}
+						await sc.BotState.DeleteStateForUserAsync(activity.ChannelId, activity.From.Id);
 					}
 				}
 				// ##############################################################################################################################################################################################################################
@@ -278,6 +279,10 @@ namespace NandosoBot
 											userData.SetProperty("askedForCountry", true);
 											await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
 										}
+										else
+										{
+											botReply = "Sorry, I did not understand that :(";
+										}
 									}
 								}
 								else if (userData.GetProperty<bool>("complaint"))
@@ -304,6 +309,10 @@ namespace NandosoBot
 									userData.SetProperty<bool>("gotActivity", true);
 									userData.SetProperty<bool>("askedForDelivery", true);
 									await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
+								}
+								else
+								{
+									botReply = "Sorry, I did not understand that :(";
 								}
 							}
 						}
