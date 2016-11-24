@@ -163,7 +163,7 @@ namespace NandosoBot
 					else if (message.ToLower().Contains("order"))
 					{
 						List<Cart> cart = await CartManager.CartManagerInstance.GetCart();
-						botReply = "Thanks for ordering with us!";d
+						botReply = "Thanks for ordering with us!";
 						foreach (Cart c in cart)
 						{
 							await CartManager.CartManagerInstance.DeleteCart(c);
