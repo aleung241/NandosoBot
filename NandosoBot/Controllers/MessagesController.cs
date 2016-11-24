@@ -49,7 +49,7 @@ namespace NandosoBot
 					}
 					else if (message.ToLower().Contains("help"))
 					{
-						botReply = "!reset to clear user data and reset the bot\n\r!menu to show the restaurant menu";
+						botReply = "!reset to clear user data and reset the bot\n\r!menu to show the restaurant menu\n\r!cart to show your current order in shopping cart";
 					}
 					else if (message.ToLower().Contains("menu"))
 					{
