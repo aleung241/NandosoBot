@@ -12,6 +12,7 @@ using Microsoft.Bot.Connector;
 using Newtonsoft.Json;
 using Microsoft.WindowsAzure.MobileServices;
 using NandosoBot.DataModels;
+using Newtonsoft.Json.Linq;
 
 namespace NandosoBot
 {
@@ -107,8 +108,16 @@ namespace NandosoBot
 								double convertedPrice = totalPrice / userData.GetProperty<double>("mnt") * userData.GetProperty<double>("rate");
 								receiptCard.Title = "Your Order";
 								receiptCard.Items = items;
-								receiptCard.Tax = "" + userData.GetProperty<double>("mnt");
 								receiptCard.Total = $"${totalPrice} MNT = ${convertedPrice} {userData.GetProperty<string>("currency")}";
+								receiptCard.Buttons = new List<CardAction>
+								{
+									new CardAction()
+									{
+										Title = "No this is wrong! Restart!",
+										Type = "postBack",
+										Value = "!reshop"
+									}
+								};
 							}
 							else
 							{
@@ -120,6 +129,14 @@ namespace NandosoBot
 							cartReply.Attachments.Add(attach);
 							await connector.Conversations.SendToConversationAsync(cartReply);
 							return Request.CreateResponse(HttpStatusCode.OK);
+						}
+					}
+					else if (message.ToLower().Contains("reshop"))
+					{
+						List<Cart> cart = await CartManager.CartManagerInstance.GetCart();
+						foreach (Cart c in cart)
+						{
+							await CartManager.CartManagerInstance.DeleteCart(c);
 						}
 					}
 				}
@@ -134,7 +151,7 @@ namespace NandosoBot
 						{
 							userData.SetProperty<string>("userName", message);
 							await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
-							botReply = $"Hi {userData.GetProperty<string>("userName")}, what would you like to do today?";
+							botReply = $"Hi {userData.GetProperty<string>("userName")}, what would you like to do today? (Hint: order something or make a complaint! Just order something actually...";
 						}
 						// If username had been given beforehand already
 						else
@@ -145,81 +162,85 @@ namespace NandosoBot
 								{
 									if (userData.GetProperty<bool>("askedForCountry"))
 									{
-										List<Country.RootObject> rootObject;
-
-										HttpClient client = new HttpClient();
-										string x = await client.GetStringAsync(new Uri("https://restcountries.eu/rest/v1/all"));
-
-										rootObject = JsonConvert.DeserializeObject<List<Country.RootObject>>(x);
-
-										if (rootObject.Any(country => country.name.Equals(message, StringComparison.InvariantCultureIgnoreCase)))
+										if (userData.GetProperty<bool>("validCountry"))
 										{
-											userData.SetProperty("country", message);
-											userData.SetProperty("hasCountry", true);
-
-											var currency = rootObject.FirstOrDefault(item => item.name.ToLower() == message.ToLower()).currencies[0];
-											userData.SetProperty("currency", currency);
-
-											Currency.RootObject rates;
-											string z = await client.GetStringAsync(new Uri("https://openexchangerates.org/api/latest.json?app_id=e37bb753919b470883daf568b8fab555"));
-											rates = JsonConvert.DeserializeObject<Currency.RootObject>(z);
-
-											PropertyInfo prop = typeof(Currency.Rates).GetProperty(currency);
-											object rate = prop.GetValue(rates.rates, null);
-
-											userData.SetProperty<double>("rate", Convert.ToDouble(rate));
-											userData.SetProperty("mnt", rates.rates.MNT);
-
-											await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
-
-											if (userData.GetProperty<bool>("askedForOrder"))
+											int count = 0;
+											string dish = "";
+											List<Menu> menu = await AzureManager.AzureManagerInstance.GetMenu();
+											Cart cart = new Cart();
+											foreach (Menu m in menu)
 											{
-												int count = 0;
-												string dish = "";
-												List<Menu> menu = await AzureManager.AzureManagerInstance.GetMenu();
-												Cart cart = new Cart();
-												foreach (Menu m in menu)
+												if (activity.Text.ToLower().Trim() == m.Dish.ToLower())
 												{
-													if (activity.Text.ToLower().Trim() == m.Dish.ToLower())
-													{
-														count++;
-														dish = m.Dish;
-														cart.Dish = m.Dish;
-														cart.Price = m.Price;
-														cart.Image = m.Image;
-													}
+													count++;
+													dish = m.Dish;
+													cart.Dish = m.Dish;
+													cart.Price = m.Price;
+													cart.Image = m.Image;
 												}
-												if (count < 1)
-												{
-													botReply =
-														$"Sorry, {activity.Text} is not available in our menu.\n\rPlease see !menu for what's available to order";
-												}
-												else
-												{
-													await CartManager.CartManagerInstance.AddToCart(cart);
-													count = 0;
-													botReply = $"{dish} has been added to cart\n\r!cart to see your cart and place your order";
-												}
+											}
+											if (count < 1)
+											{
+												botReply =
+													$"Sorry, {activity.Text} is not available in our menu.\n\rPlease see !menu for what's available to order";
 											}
 											else
 											{
-												botReply = "What would you like to order?\n\rYou can type !menu to get our menu\n\rYou can type !cart at any time to see what's in your shopping cart currently";
-												userData.SetProperty("askedForOrder", true);
-												await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
+												await CartManager.CartManagerInstance.AddToCart(cart);
+												count = 0;
+												botReply = $"{dish} has been added to cart\n\r!cart to see your cart and place your order";
 											}
 										}
 										else
 										{
-											botReply = $"Sorry, but we do not deliver to {message}";
+											List<Country.RootObject> rootObject;
+
+											HttpClient client = new HttpClient();
+											string x = await client.GetStringAsync(new Uri("https://restcountries.eu/rest/v1/all"));
+
+											rootObject = JsonConvert.DeserializeObject<List<Country.RootObject>>(x);
+
+											if (rootObject.Any(country => country.name.Equals(message, StringComparison.InvariantCultureIgnoreCase)))
+											{
+												userData.SetProperty("country", message);
+												userData.SetProperty("hasCountry", true);
+
+												var currency = rootObject.FirstOrDefault(item => item.name.ToLower() == message.ToLower()).currencies[0];
+												userData.SetProperty("currency", currency);
+
+												Currency.RootObject rates;
+												string z =
+													await
+														client.GetStringAsync(
+															new Uri("https://openexchangerates.org/api/latest.json?app_id=e37bb753919b470883daf568b8fab555"));
+												rates = JsonConvert.DeserializeObject<Currency.RootObject>(z);
+
+												PropertyInfo prop = typeof(Currency.Rates).GetProperty(currency);
+												object rate = prop.GetValue(rates.rates, null);
+
+												userData.SetProperty<double>("rate", Convert.ToDouble(rate));
+												userData.SetProperty("mnt", rates.rates.MNT);
+												userData.SetProperty("validCountry", true);
+
+												botReply = "What would you like to order?\n\rYou can type !menu to get our menu\n\rYou can type !cart at any time to see what's in your shopping cart currently";
+												userData.SetProperty("askedForOrder", true);
+
+												await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
+											}
+											else
+											{
+												botReply = $"Sorry, but we do not deliver to {message}";
+											}
 										}
 
-										
 									}
 									else
 									{
 										if (message.ToLower().Trim() == "domestic")
 										{
-											botReply = "We do free deliveries domestically!";
+											botReply = "We do free deliveries domestically! What would you like to order?";
+											userData.SetProperty("askedForOrder", true);
+											await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
 										}
 										else if (message.ToLower().Trim() == "international")
 										{
@@ -231,7 +252,8 @@ namespace NandosoBot
 								}
 								else if (userData.GetProperty<bool>("complaint"))
 								{
-									// well, user wants to complain. deal with it
+									botReply = "Sorry, not implemented yet. Goodbye!";
+									await sc.BotState.DeleteStateForUserAsync(activity.ChannelId, activity.From.Id);
 								}
 							}
 							else

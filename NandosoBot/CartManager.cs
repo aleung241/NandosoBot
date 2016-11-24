@@ -48,5 +48,15 @@ namespace NandosoBot
 		{
 			await this.cartTable.InsertAsync(cart);
 		}
+
+		public async Task UpdateCart(Cart cart)
+		{
+			await this.cartTable.UpdateAsync(cart);
+		}
+
+		public async Task DeleteCart(Cart cart)
+		{
+			await this.cartTable.DeleteAsync(cart);
+		}
 	}
 }
