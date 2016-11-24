@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Description;
@@ -99,13 +101,21 @@ namespace NandosoBot
 									Image = new CardImage(c.Image)
 								});
 							}
-
-							ReceiptCard receiptCard = new ReceiptCard()
+							ReceiptCard receiptCard = new ReceiptCard();
+							if (userData.GetProperty<bool>("hasCountry"))
 							{
-								Title = "Your Order",
-								Items = items,
-								Total = $"{totalPrice}"
-							};
+								double convertedPrice = totalPrice / userData.GetProperty<double>("mnt") * userData.GetProperty<double>("rate");
+								receiptCard.Title = "Your Order";
+								receiptCard.Items = items;
+								receiptCard.Tax = "" + userData.GetProperty<double>("mnt");
+								receiptCard.Total = $"${totalPrice} MNT = ${convertedPrice} {userData.GetProperty<string>("currency")}";
+							}
+							else
+							{
+								receiptCard.Title = "Your Order";
+								receiptCard.Items = items;
+								receiptCard.Total = $"${totalPrice}";
+							}
 							Attachment attach = receiptCard.ToAttachment();
 							cartReply.Attachments.Add(attach);
 							await connector.Conversations.SendToConversationAsync(cartReply);
@@ -135,41 +145,75 @@ namespace NandosoBot
 								{
 									if (userData.GetProperty<bool>("askedForCountry"))
 									{
-										if (userData.GetProperty<bool>("askedForOrder"))
+										List<Country.RootObject> rootObject;
+
+										HttpClient client = new HttpClient();
+										string x = await client.GetStringAsync(new Uri("https://restcountries.eu/rest/v1/all"));
+
+										rootObject = JsonConvert.DeserializeObject<List<Country.RootObject>>(x);
+
+										if (rootObject.Any(country => country.name.Equals(message, StringComparison.InvariantCultureIgnoreCase)))
 										{
-											int count = 0;
-											string dish = "";
-											List<Menu> menu = await AzureManager.AzureManagerInstance.GetMenu();
-											Cart cart = new Cart();
-											foreach (Menu m in menu)
+											userData.SetProperty("country", message);
+											userData.SetProperty("hasCountry", true);
+
+											var currency = rootObject.FirstOrDefault(item => item.name.ToLower() == message.ToLower()).currencies[0];
+											userData.SetProperty("currency", currency);
+
+											Currency.RootObject rates;
+											string z = await client.GetStringAsync(new Uri("https://openexchangerates.org/api/latest.json?app_id=e37bb753919b470883daf568b8fab555"));
+											rates = JsonConvert.DeserializeObject<Currency.RootObject>(z);
+
+											PropertyInfo prop = typeof(Currency.Rates).GetProperty(currency);
+											object rate = prop.GetValue(rates.rates, null);
+
+											userData.SetProperty<double>("rate", Convert.ToDouble(rate));
+											userData.SetProperty("mnt", rates.rates.MNT);
+
+											await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
+
+											if (userData.GetProperty<bool>("askedForOrder"))
 											{
-												if (activity.Text.ToLower().Trim() == m.Dish.ToLower())
+												int count = 0;
+												string dish = "";
+												List<Menu> menu = await AzureManager.AzureManagerInstance.GetMenu();
+												Cart cart = new Cart();
+												foreach (Menu m in menu)
 												{
-													count++;
-													dish = m.Dish;
-													cart.Dish = m.Dish;
-													cart.Price = m.Price;
-													cart.Image = m.Image;
+													if (activity.Text.ToLower().Trim() == m.Dish.ToLower())
+													{
+														count++;
+														dish = m.Dish;
+														cart.Dish = m.Dish;
+														cart.Price = m.Price;
+														cart.Image = m.Image;
+													}
 												}
-											}
-											if (count < 1)
-											{
-												botReply =
-													$"Sorry, {activity.Text} is not available in our menu.\n\rPlease see !menu for what's available to order";
+												if (count < 1)
+												{
+													botReply =
+														$"Sorry, {activity.Text} is not available in our menu.\n\rPlease see !menu for what's available to order";
+												}
+												else
+												{
+													await CartManager.CartManagerInstance.AddToCart(cart);
+													count = 0;
+													botReply = $"{dish} has been added to cart\n\r!cart to see your cart and place your order";
+												}
 											}
 											else
 											{
-												await CartManager.CartManagerInstance.AddToCart(cart);
-												count = 0;
-												botReply = $"{dish} has been added to cart\n\r!cart to see your cart and place your order";
+												botReply = "What would you like to order?\n\rYou can type !menu to get our menu\n\rYou can type !cart at any time to see what's in your shopping cart currently";
+												userData.SetProperty("askedForOrder", true);
+												await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
 											}
 										}
 										else
 										{
-											botReply = "What would you like to order?\n\rYou can type !menu to get our menu\n\rYou can type !cart at any time to see what's in your shopping cart currently";
-											userData.SetProperty("askedForOrder", true);
-											await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
+											botReply = $"Sorry, but we do not deliver to {message}";
 										}
+
+										
 									}
 									else
 									{

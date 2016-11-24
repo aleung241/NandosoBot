@@ -139,6 +139,8 @@
     <Compile Include="CartManager.cs" />
     <Compile Include="Controllers\MessagesController.cs" />
     <Compile Include="DataModels\Cart.cs" />
+    <Compile Include="DataModels\Country.cs" />
+    <Compile Include="DataModels\Currency.cs" />
     <Compile Include="DataModels\Menu.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
