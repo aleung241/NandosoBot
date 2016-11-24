@@ -75,7 +75,7 @@ namespace NandosoBot
 					}
 					else if (message.ToLower().Contains("cart"))
 					{
-						string individualCart = "";
+						//string individualCart = "";
 						List<Cart> cart = await CartManager.CartManagerInstance.GetCart();
 						if (cart.Count < 1)
 						{
@@ -83,26 +83,34 @@ namespace NandosoBot
 						}
 						else
 						{
+							Activity cartReply = activity.CreateReply();
+							cartReply.Recipient = activity.From;
+							cartReply.Type = "message";
+							cartReply.Attachments = new List<Attachment>();
+							double totalPrice = 0;
+							List<ReceiptItem> items = new List<ReceiptItem>();
 							foreach (Cart c in cart)
 							{
-								individualCart += $"{c.Dish}  ";
+								totalPrice += c.Price;
+								items.Add(new ReceiptItem
+								{
+									Title = c.Dish,
+									Price = $"{c.Price}",
+									Image = new CardImage(c.Image)
+								});
 							}
-							Activity cartReply = activity.CreateReply(individualCart);
+
+							ReceiptCard receiptCard = new ReceiptCard()
+							{
+								Title = "Your Order",
+								Items = items,
+								Total = $"{totalPrice}"
+							};
+							Attachment attach = receiptCard.ToAttachment();
+							cartReply.Attachments.Add(attach);
 							await connector.Conversations.SendToConversationAsync(cartReply);
 							return Request.CreateResponse(HttpStatusCode.OK);
 						}
-					}
-					else if (message.ToLower().Contains("pavlova"))
-					{
-						Cart cart = new Cart()
-						{
-							Dish = "Pavlova",
-							Price = 9000
-						};
-
-						await CartManager.CartManagerInstance.AddToCart(cart);
-
-						botReply = $"your stupid expensive pavlova is added lul. Price is {cart.Price}";
 					}
 				}
 				// ##############################################################################################################################################################################################################################
@@ -135,12 +143,13 @@ namespace NandosoBot
 											Cart cart = new Cart();
 											foreach (Menu m in menu)
 											{
-												if (activity.Text.ToLower().Trim() == m.Dish)
+												if (activity.Text.ToLower().Trim() == m.Dish.ToLower())
 												{
 													count++;
 													dish = m.Dish;
 													cart.Dish = m.Dish;
 													cart.Price = m.Price;
+													cart.Image = m.Image;
 												}
 											}
 											if (count < 1)
@@ -152,7 +161,7 @@ namespace NandosoBot
 											{
 												await CartManager.CartManagerInstance.AddToCart(cart);
 												count = 0;
-												botReply = $"{dish} has been added to cart";
+												botReply = $"{dish} has been added to cart\n\r!cart to see your cart and place your order";
 											}
 										}
 										else

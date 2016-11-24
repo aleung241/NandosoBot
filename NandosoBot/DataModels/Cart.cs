@@ -16,5 +16,8 @@ namespace NandosoBot.DataModels
 
 		[JsonProperty(PropertyName = "price")]
 		public double Price { get; set; }
+
+		[JsonProperty(PropertyName = "image")]
+		public string Image { get; set; }
 	}
 }
