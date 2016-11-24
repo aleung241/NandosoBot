@@ -136,7 +136,9 @@
   <ItemGroup>
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="AzureManager.cs" />
+    <Compile Include="CartManager.cs" />
     <Compile Include="Controllers\MessagesController.cs" />
+    <Compile Include="DataModels\Cart.cs" />
     <Compile Include="DataModels\Menu.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
