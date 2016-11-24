@@ -270,7 +270,7 @@ namespace NandosoBot
 										if (message.ToLower().Contains("domestic"))
 										{
 											botReply = "We do free deliveries domestically! What would you like to order?";
-											userData.SetProperty("askedForOrder", true);
+											userData.SetProperty("validCountry", true);
 											await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
 										}
 										else if (message.ToLower().Contains("international"))
