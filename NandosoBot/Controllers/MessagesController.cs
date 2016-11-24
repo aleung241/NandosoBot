@@ -266,13 +266,13 @@ namespace NandosoBot
 									}
 									else
 									{
-										if (message.ToLower().Trim() == "domestic")
+										if (message.ToLower().Contains("domestic"))
 										{
 											botReply = "We do free deliveries domestically! What would you like to order?";
 											userData.SetProperty("askedForOrder", true);
 											await sc.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
 										}
-										else if (message.ToLower().Trim() == "international")
+										else if (message.ToLower().Contains("international"))
 										{
 											botReply = "What country do you want to deliver to?";
 											userData.SetProperty("askedForCountry", true);
