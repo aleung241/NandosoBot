@@ -113,6 +113,12 @@ namespace NandosoBot
 								{
 									new CardAction()
 									{
+										Title = "Confirm and place order",
+										Type = "postBack",
+										Value = "!order"
+									},
+									new CardAction()
+									{
 										Title = "No this is wrong! Restart!",
 										Type = "postBack",
 										Value = "!reshop"
@@ -124,6 +130,21 @@ namespace NandosoBot
 								receiptCard.Title = "Your Order";
 								receiptCard.Items = items;
 								receiptCard.Total = $"${totalPrice}";
+								receiptCard.Buttons = new List<CardAction>
+								{
+									new CardAction()
+									{
+										Title = "Confirm and place order",
+										Type = "postBack",
+										Value = "!order"
+									},
+									new CardAction()
+									{
+										Title = "No this is wrong! Restart!",
+										Type = "postBack",
+										Value = "!reshop"
+									}
+								};
 							}
 							Attachment attach = receiptCard.ToAttachment();
 							cartReply.Attachments.Add(attach);
@@ -134,6 +155,15 @@ namespace NandosoBot
 					else if (message.ToLower().Contains("reshop"))
 					{
 						List<Cart> cart = await CartManager.CartManagerInstance.GetCart();
+						foreach (Cart c in cart)
+						{
+							await CartManager.CartManagerInstance.DeleteCart(c);
+						}
+					}
+					else if (message.ToLower().Contains("order"))
+					{
+						List<Cart> cart = await CartManager.CartManagerInstance.GetCart();
+						botReply = "Thanks for ordering with us!";d
 						foreach (Cart c in cart)
 						{
 							await CartManager.CartManagerInstance.DeleteCart(c);
