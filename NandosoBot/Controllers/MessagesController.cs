@@ -108,7 +108,7 @@ namespace NandosoBot
 								double convertedPrice = totalPrice / userData.GetProperty<double>("mnt") * userData.GetProperty<double>("rate");
 								receiptCard.Title = "Your Order";
 								receiptCard.Items = items;
-								receiptCard.Total = $"${convertedPrice} {userData.GetProperty<string>("currency")}";
+								receiptCard.Total = $"${Math.Round(convertedPrice,2)} {userData.GetProperty<string>("currency")}";
 								receiptCard.Buttons = new List<CardAction>
 								{
 									new CardAction()
@@ -129,7 +129,7 @@ namespace NandosoBot
 							{
 								receiptCard.Title = "Your Order";
 								receiptCard.Items = items;
-								receiptCard.Total = $"${totalPrice}";
+								receiptCard.Total = $"${Math.Round(totalPrice,2)}";
 								receiptCard.Buttons = new List<CardAction>
 								{
 									new CardAction()
