@@ -159,6 +159,7 @@ namespace NandosoBot
 						{
 							await CartManager.CartManagerInstance.DeleteCart(c);
 						}
+						botReply = "Shopping cart reset!";
 					}
 					else if (message.ToLower().Contains("order"))
 					{
